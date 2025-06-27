@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { type NextRequest, NextResponse } from "next/server"
 import { verifyToken } from "@/lib/server-auth"
 import { getAllUsers, initializeAdminTables } from "@/lib/server-admin"
