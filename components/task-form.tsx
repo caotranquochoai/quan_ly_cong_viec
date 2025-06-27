@@ -26,11 +26,17 @@ interface TaskFormProps {
 export default function TaskForm({ task, onSave, onCancel, language, prefilledDate }: TaskFormProps) {
   const t = useTranslation(language)
 
+  const toLocalISOString = (date: Date) => {
+    const tzoffset = (new Date()).getTimezoneOffset() * 60000; //offset in milliseconds
+    const localISOTime = (new Date(date.getTime() - tzoffset)).toISOString().slice(0, -1);
+    return localISOTime.slice(0, 16);
+  }
+
   const [formData, setFormData] = useState({
     title: task?.title || "",
     description: task?.description || "",
     category: task?.category || ("other" as TaskCategory),
-    dueDate: task?.dueDate ? task.dueDate.toISOString().slice(0, 16) : (prefilledDate ? prefilledDate.toISOString().slice(0, 16) : ""),
+    dueDate: task?.dueDate ? toLocalISOString(task.dueDate) : (prefilledDate ? toLocalISOString(prefilledDate) : ""),
     reminderTime: task?.reminderTime || 60,
     isRecurring: task?.isRecurring || false,
     recurringType: task?.recurringType || ("monthly" as const),

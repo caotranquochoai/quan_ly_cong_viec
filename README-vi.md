@@ -102,6 +102,16 @@ Tập lệnh này cũng sẽ tạo một người dùng quản trị mặc đị
 -   **Người dùng:** Đăng ký một tài khoản mới hoặc đăng nhập bằng một tài khoản hiện có để bắt đầu quản lý công việc của bạn.
 -   **Quản trị viên:** Truy cập bảng điều khiển quản trị tại `/admin` và đăng nhập bằng thông tin đăng nhập quản trị bạn đã đặt trong tệp `.env.local`.
 
+## Gửi lời nhắc
+
+Để gửi lời nhắc qua email cho các công việc sắp tới, hãy chạy lệnh sau:
+
+```bash
+node scripts/send-reminders.js
+```
+
+Bạn có thể thiết lập một cron job để chạy tập lệnh này định kỳ (ví dụ: mỗi phút) để tự động hóa quá trình gửi lời nhắc.
+
 ## Đóng góp
 
 Chào mừng các đóng góp! Vui lòng gửi một pull request hoặc mở một issue.

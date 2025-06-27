@@ -38,7 +38,6 @@ export async function executeQuery(query: string, params: any[] = []) {
     port: 3306,
     ssl: undefined,
     connectTimeout: 60000,
-    acquireTimeout: 60000,
   }
 
   const connection = await mysql.createConnection(dbConfig)

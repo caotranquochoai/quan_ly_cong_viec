@@ -13,7 +13,6 @@ async function executeQuery(query: string, params: any[] = []) {
     port: 3306,
     ssl: false,
     connectTimeout: 60000,
-    acquireTimeout: 60000,
   }
 
   let connection
@@ -168,8 +167,8 @@ export async function updateTask(userId: number, taskId: string, updates: Partia
     }
 
     if (updates.dueDate !== undefined) {
-      const dueDateString =
-        updates.dueDate instanceof Date ? updates.dueDate.toISOString().slice(0, 19).replace("T", " ") : updates.dueDate
+      const dueDate = new Date(updates.dueDate);
+      const dueDateString = `${dueDate.getFullYear()}-${(dueDate.getMonth() + 1).toString().padStart(2, '0')}-${dueDate.getDate().toString().padStart(2, '0')} ${dueDate.getHours().toString().padStart(2, '0')}:${dueDate.getMinutes().toString().padStart(2, '0')}:${dueDate.getSeconds().toString().padStart(2, '0')}`;
       setClause.push("due_date = ?")
       values.push(dueDateString)
       console.log("Updating due_date to:", dueDateString)

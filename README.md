@@ -102,6 +102,16 @@ This script will also create a default admin user and a sample user.
 -   **User:** Register a new account or log in with an existing one to start managing your tasks.
 -   **Admin:** Access the admin panel at `/admin` and log in with the admin credentials you set in the `.env.local` file.
 
+## Sending Reminders
+
+To send email reminders for upcoming tasks, run the following command:
+
+```bash
+node scripts/send-reminders.js
+```
+
+You can set up a cron job to run this script periodically (e.g., every minute) to automate the process of sending reminders.
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a pull request or open an issue.

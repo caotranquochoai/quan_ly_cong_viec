@@ -1,1 +1,1 @@
-2025-06-27 20:42:00 | Hướng dẫn người dùng chạy npm run build trước khi chạy npm start.
+2025-06-27 21:21:43 | Tạo script để gửi email nhắc nhở và cập nhật file README.
