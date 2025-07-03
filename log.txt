@@ -1,1 +1,1 @@
-2025-06-27 21:21:43 | Tạo script để gửi email nhắc nhở và cập nhật file README.
+2025-07-03 19:07:26 | Cung cấp câu lệnh SQL để thêm cột recurring_count và recurring_cycles vào bảng tasks.

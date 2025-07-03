@@ -41,6 +41,7 @@ export default function TaskForm({ task, onSave, onCancel, language, prefilledDa
     isRecurring: task?.isRecurring || false,
     recurringType: task?.recurringType || ("monthly" as const),
     isCompleted: task?.isCompleted || false,
+    recurringCycles: task?.recurringCycles || 1,
   })
   const [isLunar, setIsLunar] = useState(false)
   const [lunarDate, setLunarDate] = useState({ year: new Date().getFullYear(), month: 1, day: 1, isLeap: false })
@@ -79,6 +80,7 @@ export default function TaskForm({ task, onSave, onCancel, language, prefilledDa
       recurringType: formData.isRecurring ? formData.recurringType : undefined,
       isCompleted: formData.isCompleted,
       completedAt: formData.isCompleted ? new Date() : undefined,
+      recurringCycles: formData.isRecurring ? formData.recurringCycles : undefined,
     })
   }
 
@@ -232,6 +234,27 @@ export default function TaskForm({ task, onSave, onCancel, language, prefilledDa
               {t.recurringTask}
             </Label>
           </div>
+
+          {formData.isRecurring && (
+            <div className="space-y-2">
+              <Label htmlFor="recurring-cycles" className="text-sm font-medium">
+                {t.numberOfRepetitions}
+              </Label>
+              <Select
+                value={formData.recurringCycles?.toString() || "1"}
+                onValueChange={(value) => setFormData({ ...formData, recurringCycles: parseInt(value) })}
+              >
+                <SelectTrigger className="text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">1</SelectItem>
+                  <SelectItem value="2">2</SelectItem>
+                  <SelectItem value="3">3</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           {formData.isRecurring && (
             <div className="space-y-2">

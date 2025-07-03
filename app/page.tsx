@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import type { Task, Language } from "@/lib/types"
-import type { User } from "@/lib/auth"
+import type { User } from "@/lib/types"
 import { taskStorage } from "@/lib/task-storage"
 import TaskForm from "@/components/task-form"
 import TaskList from "@/components/task-list"
@@ -162,13 +162,10 @@ export default function TaskScheduler() {
     setTasks([])
   }
 
-  const handleUserUpdate = async (updatedUser: User) => {
+  const handleUserUpdate = (updatedUser: User) => {
     setUser(updatedUser)
-    try {
-      await updateTaskAPI(localStorage.getItem("auth-token")!, updatedUser.id.toString(), { timezone: updatedUser.timezone })
-    } catch (error) {
-      console.error("Failed to update user timezone:", error)
-    }
+    updateTaskAPI(localStorage.getItem("auth-token")!, updatedUser.id.toString(), { timezone: updatedUser.timezone })
+      .catch(error => console.error("Failed to update user timezone:", error));
   }
 
   // Show loading screen during initialization
@@ -271,6 +268,41 @@ export default function TaskScheduler() {
         const savedTask = await createTaskAPI(token, taskWithLunarDate)
 
         if (savedTask) {
+          if (savedTask.isRecurring) {
+            let lastTask = savedTask;
+            for (let i = 0; i < (savedTask.recurringCycles || 1) - 1; i++) {
+              const nextDueDate = new Date(lastTask.dueDate)
+              const originalDay = nextDueDate.getDate();
+
+              switch (lastTask.recurringType) {
+                case "daily":
+                  nextDueDate.setDate(nextDueDate.getDate() + 1)
+                  break
+                case "weekly":
+                  nextDueDate.setDate(nextDueDate.getDate() + 7)
+                  break
+                case "monthly":
+                  nextDueDate.setMonth(nextDueDate.getMonth() + 1)
+                  if (nextDueDate.getDate() !== originalDay) {
+                    nextDueDate.setDate(0);
+                  }
+                  break
+              }
+
+              const newRecurringTask: Omit<Task, "id" | "createdAt"> = {
+                ...taskData,
+                dueDate: nextDueDate,
+                recurringCount: (lastTask.recurringCount || 0) + 1,
+              }
+              const nextTask = await createTaskAPI(token, newRecurringTask)
+              if (nextTask) {
+                lastTask = nextTask
+              } else {
+                // Stop creating recurring tasks if one fails
+                break;
+              }
+            }
+          }
           console.log("Task created successfully")
           // Reload tasks to get the latest data
           await loadUserTasks(token)
@@ -352,8 +384,9 @@ export default function TaskScheduler() {
     setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, ...updates } : t)))
 
     // Handle recurring tasks
-    if (isCompleting && task.isRecurring && task.recurringType) {
+    if (isCompleting && task.isRecurring && task.recurringType && (task.recurringCount || 0) < (task.recurringCycles || 1) -1) {
       const nextDueDate = new Date(task.dueDate)
+      const originalDay = nextDueDate.getDate();
 
       switch (task.recurringType) {
         case "daily":
@@ -364,6 +397,10 @@ export default function TaskScheduler() {
           break
         case "monthly":
           nextDueDate.setMonth(nextDueDate.getMonth() + 1)
+          // Handle cases where the next month has fewer days
+          if (nextDueDate.getDate() !== originalDay) {
+            nextDueDate.setDate(0);
+          }
           break
       }
 
@@ -378,6 +415,7 @@ export default function TaskScheduler() {
         recurringType: task.recurringType,
         isCompleted: false,
         completedAt: undefined,
+        recurringCount: (task.recurringCount || 0) + 1,
       }
 
       try {

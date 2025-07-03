@@ -43,8 +43,8 @@ export async function getUserTasks(userId: number): Promise<Task[]> {
     console.log("Fetching tasks for user:", userId)
 
     const tasks = (await executeQuery(
-      `SELECT id, title, description, category, due_date, reminder_time, 
-       is_recurring, recurring_type, is_completed, created_at, completed_at 
+      `SELECT id, title, description, category, due_date, reminder_time,
+       is_recurring, recurring_type, is_completed, created_at, completed_at, recurring_count, recurring_cycles
        FROM tasks WHERE user_id = ? ORDER BY due_date ASC`,
       [userId],
     )) as any[]
@@ -96,9 +96,9 @@ export async function createTask(userId: number, task: Omit<Task, "id" | "create
         : task.completedAt
 
     const result = (await executeQuery(
-      `INSERT INTO tasks (user_id, title, description, category, due_date, reminder_time, 
-       is_recurring, recurring_type, is_completed, completed_at, created_at) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+      `INSERT INTO tasks (user_id, title, description, category, due_date, reminder_time,
+       is_recurring, recurring_type, is_completed, completed_at, recurring_count, recurring_cycles, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
       [
         userId,
         task.title,
@@ -110,6 +110,8 @@ export async function createTask(userId: number, task: Omit<Task, "id" | "create
         task.recurringType || null,
         task.isCompleted ? 1 : 0,
         completedAtString || null,
+        task.recurringCount || 0,
+        task.recurringCycles || 1,
       ],
     )) as any
 
@@ -206,6 +208,18 @@ export async function updateTask(userId: number, taskId: string, updates: Partia
       setClause.push("completed_at = ?")
       values.push(completedAtString)
       console.log("Updating completed_at to:", completedAtString)
+    }
+
+    if (updates.recurringCount !== undefined) {
+      setClause.push("recurring_count = ?")
+      values.push(updates.recurringCount)
+      console.log("Updating recurring_count to:", updates.recurringCount)
+    }
+
+    if (updates.recurringCycles !== undefined) {
+      setClause.push("recurring_cycles = ?")
+      values.push(updates.recurringCycles)
+      console.log("Updating recurring_cycles to:", updates.recurringCycles)
     }
 
     if (updates.timezone) {

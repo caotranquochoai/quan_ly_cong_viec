@@ -11,6 +11,7 @@ export interface User {
   timezone?: string
   email_verified?: number
   email_notifications?: number
+  is_active: boolean
 }
 
 // Add UserProfile interface for settings
@@ -44,6 +45,8 @@ export interface Task {
   createdAt: Date
   completedAt?: Date
   lunarDate?: LunarDateInfo // Add lunar date information
+  recurringCount?: number
+  recurringCycles?: number
 }
 
 export interface Notification {

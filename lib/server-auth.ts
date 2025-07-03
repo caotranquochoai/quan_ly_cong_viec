@@ -83,6 +83,8 @@ export async function initializeDatabase() {
         is_completed BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         completed_at TIMESTAMP NULL,
+        recurring_count INT DEFAULT 0,
+        recurring_cycles INT DEFAULT 1,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       )
     `)
@@ -109,6 +111,20 @@ export async function initializeDatabase() {
       await executeQuery("ALTER TABLE users ADD COLUMN email_notifications TINYINT(1) DEFAULT 0", []);
     } catch (error) {
       // Ignore error if columns already exist
+    }
+
+    // Add recurring_count column if it doesn't exist
+    try {
+      await executeQuery("ALTER TABLE tasks ADD COLUMN recurring_count INT DEFAULT 0", []);
+    } catch (error) {
+      // Ignore error if column already exists
+    }
+
+    // Add recurring_cycles column if it doesn't exist
+    try {
+      await executeQuery("ALTER TABLE tasks ADD COLUMN recurring_cycles INT DEFAULT 1", []);
+    } catch (error) {
+      // Ignore error if column already exists
     }
 
   } catch (error) {

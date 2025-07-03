@@ -146,7 +146,8 @@ export interface Translations {
   usernameInUse: string
   profileUpdateError: string
   passwordChangeError: string,
-  showLunar: string
+  showLunar: string,
+  numberOfRepetitions: string
 }
 
 export const translations: Record<Language, Translations> = {
@@ -297,6 +298,7 @@ export const translations: Record<Language, Translations> = {
     profileUpdateError: "Failed to update profile",
     passwordChangeError: "Failed to change password",
     showLunar: "Show Lunar",
+    numberOfRepetitions: "Number of repetitions",
   },
 
   vi: {
@@ -446,6 +448,7 @@ export const translations: Record<Language, Translations> = {
     profileUpdateError: "Không thể cập nhật hồ sơ",
     passwordChangeError: "Không thể đổi mật khẩu",
     showLunar: "Hiển thị Âm lịch",
+    numberOfRepetitions: "Số lần lặp lại",
   },
 
   zh: {
@@ -595,6 +598,7 @@ export const translations: Record<Language, Translations> = {
     profileUpdateError: "更新资料失败",
     passwordChangeError: "更改密码失败",
     showLunar: "显示农历",
+    numberOfRepetitions: "重复次数",
   },
 }
 

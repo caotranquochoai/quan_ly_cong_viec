@@ -8,9 +8,12 @@ async function initializeDatabase() {
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
-    database: process.env.DB_DATABASE,
     port: 3306,
   })
+
+  await connection.query(`DROP DATABASE IF EXISTS \`${process.env.DB_DATABASE}\``);
+  await connection.query(`CREATE DATABASE IF NOT EXISTS \`${process.env.DB_DATABASE}\``);
+  await connection.changeUser({ database: process.env.DB_DATABASE });
 
   try {
     console.log("Initializing database...")
@@ -100,20 +103,16 @@ async function initializeDatabase() {
     const passwordHash = await bcrypt.hash("admin123", 12)
 
     await connection.execute(
-      `
-      INSERT IGNORE INTO users (username, email, password_hash, role, timezone) VALUES
-      ('admin', `admin@${process.env.DOMAIN || 'vivucloud.com'}`, ?, 'admin', 'Asia/Ho_Chi_Minh')
-    `,
+      `INSERT IGNORE INTO users (username, email, password_hash, role, timezone) VALUES
+      ('admin', 'admin@${process.env.DOMAIN || 'vivucloud.com'}', ?, 'admin', 'Asia/Ho_Chi_Minh')`,
       [passwordHash],
     )
 
     // Create sample user
     const userPasswordHash = await bcrypt.hash("user123", 12)
     await connection.execute(
-      `
-      INSERT IGNORE INTO users (username, email, password_hash, role, timezone) VALUES
-      ('testuser', `user@${process.env.DOMAIN || 'vivucloud.com'}`, ?, 'user', 'Asia/Ho_Chi_Minh')
-    `,
+      `INSERT IGNORE INTO users (username, email, password_hash, role, timezone) VALUES
+      ('testuser', 'user@${process.env.DOMAIN || 'vivucloud.com'}', ?, 'user', 'Asia/Ho_Chi_Minh')`,
       [userPasswordHash],
     )
 
