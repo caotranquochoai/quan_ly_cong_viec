@@ -147,7 +147,17 @@ export interface Translations {
   profileUpdateError: string
   passwordChangeError: string,
   showLunar: string,
-  numberOfRepetitions: string
+  numberOfRepetitions: string,
+
+  // Recurring Task Dialog
+  recurringUpdateTitle: string,
+  recurringUpdateDescription: string,
+  updateThisTaskOnly: string,
+  updateFutureTasks: string,
+  recurringDeleteTitle: string,
+  recurringDeleteDescription: string,
+  deleteThisTaskOnly: string,
+  deleteFutureTasks: string,
 }
 
 export const translations: Record<Language, Translations> = {
@@ -299,6 +309,16 @@ export const translations: Record<Language, Translations> = {
     passwordChangeError: "Failed to change password",
     showLunar: "Show Lunar",
     numberOfRepetitions: "Number of repetitions",
+
+    // Recurring Task Dialog
+    recurringUpdateTitle: "Recurring Task Update",
+    recurringUpdateDescription: "Do you want to apply these changes to this task only, or to this and all future tasks in the series?",
+    updateThisTaskOnly: "Update This Task Only",
+    updateFutureTasks: "Update Future Tasks",
+    recurringDeleteTitle: "Recurring Task Deletion",
+    recurringDeleteDescription: "Do you want to delete only this task, or this and all future tasks in the series?",
+    deleteThisTaskOnly: "Delete This Task Only",
+    deleteFutureTasks: "Delete Future Tasks",
   },
 
   vi: {
@@ -449,6 +469,16 @@ export const translations: Record<Language, Translations> = {
     passwordChangeError: "Không thể đổi mật khẩu",
     showLunar: "Hiển thị Âm lịch",
     numberOfRepetitions: "Số lần lặp lại",
+
+    // Recurring Task Dialog
+    recurringUpdateTitle: "Cập nhật công việc định kỳ",
+    recurringUpdateDescription: "Bạn muốn áp dụng các thay đổi này chỉ cho công việc này, hay cho công việc này và tất cả các công việc trong tương lai của chuỗi?",
+    updateThisTaskOnly: "Chỉ cập nhật công việc này",
+    updateFutureTasks: "Cập nhật các công việc trong tương lai",
+    recurringDeleteTitle: "Xóa công việc định kỳ",
+    recurringDeleteDescription: "Bạn muốn chỉ xóa công việc này, hay xóa công việc này và tất cả các công việc trong tương lai của chuỗi?",
+    deleteThisTaskOnly: "Chỉ xóa công việc này",
+    deleteFutureTasks: "Xóa các công việc trong tương lai",
   },
 
   zh: {
@@ -599,6 +629,16 @@ export const translations: Record<Language, Translations> = {
     passwordChangeError: "更改密码失败",
     showLunar: "显示农历",
     numberOfRepetitions: "重复次数",
+
+    // Recurring Task Dialog
+    recurringUpdateTitle: "更新重复任务",
+    recurringUpdateDescription: "您要将这些更改仅应用于此任务，还是应用于此任务及系列中所有未来的任务？",
+    updateThisTaskOnly: "仅更新此任务",
+    updateFutureTasks: "更新未来的任务",
+    recurringDeleteTitle: "删除重复任务",
+    recurringDeleteDescription: "您要仅删除此任务，还是删除此任务及系列中所有未来的任务？",
+    deleteThisTaskOnly: "仅删除此任务",
+    deleteFutureTasks: "删除未来的任务",
   },
 }
 

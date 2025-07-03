@@ -47,6 +47,7 @@ export interface Task {
   lunarDate?: LunarDateInfo // Add lunar date information
   recurringCount?: number
   recurringCycles?: number
+  recurring_series_id?: string
 }
 
 export interface Notification {

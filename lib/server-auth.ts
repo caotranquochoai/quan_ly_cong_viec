@@ -127,6 +127,14 @@ export async function initializeDatabase() {
       // Ignore error if column already exists
     }
 
+    // Add recurring_series_id column for grouping recurring tasks
+    try {
+      await executeQuery("ALTER TABLE tasks ADD COLUMN recurring_series_id BIGINT NULL", []);
+      await executeQuery("CREATE INDEX idx_recurring_series_id ON tasks (recurring_series_id)", []);
+    } catch (error) {
+      // Ignore error if column or index already exists
+    }
+
   } catch (error) {
     console.error("Database initialization failed:", error)
     throw error

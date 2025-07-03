@@ -70,22 +70,24 @@ export async function createTask(token: string, task: Omit<Task, "id" | "created
   }
 }
 
-export async function updateTask(token: string, taskId: string, updates: Partial<Task> & { timezone?: string }): Promise<boolean> {
+export async function updateTask(
+  token: string,
+  taskId: string,
+  updates: Partial<Task> & { timezone?: string },
+  scope: "single" | "all_future" = "single"
+): Promise<boolean> {
   try {
-    console.log("Updating task via API:", taskId)
+    console.log(`Updating task via API: ${taskId} with scope: ${scope}`)
     console.log("Update data:", updates)
 
-    // Prepare the update payload with proper date serialization
-    const updatePayload: any = { ...updates }
+    const updatePayload: any = { ...updates, update_scope: scope }
 
     if (updates.dueDate) {
       updatePayload.dueDate = updates.dueDate.toISOString()
     }
-
     if (updates.createdAt) {
       updatePayload.createdAt = updates.createdAt.toISOString()
     }
-
     if (updates.completedAt) {
       updatePayload.completedAt = updates.completedAt.toISOString()
     } else if (updates.completedAt === null || updates.completedAt === undefined) {
@@ -122,18 +124,27 @@ export async function updateTask(token: string, taskId: string, updates: Partial
     }
 
     return false
-  } catch (error) {
+  } catch (error: any) {
     console.error("Update task error:", error)
     console.error("Stack trace:", error.stack)
     return false
   }
 }
 
-export async function deleteTask(token: string, taskId: string): Promise<boolean> {
+export async function deleteTask(
+  token: string,
+  taskId: string,
+  scope: "single" | "all_future" = "single"
+): Promise<boolean> {
   try {
-    console.log("Deleting task via API:", taskId)
+    console.log(`Deleting task via API: ${taskId} with scope: ${scope}`)
 
-    const response = await fetch(`/api/tasks/${taskId}`, {
+    const url = new URL(`${window.location.origin}/api/tasks/${taskId}`)
+    if (scope === "all_future") {
+      url.searchParams.append("delete_scope", "all_future")
+    }
+
+    const response = await fetch(url.toString(), {
       method: "DELETE",
       headers: { Authorization: `Bearer ${token}` },
     })
@@ -148,7 +159,7 @@ export async function deleteTask(token: string, taskId: string): Promise<boolean
     }
 
     return false
-  } catch (error) {
+  } catch (error: any) {
     console.error("Delete task error:", error)
     return false
   }

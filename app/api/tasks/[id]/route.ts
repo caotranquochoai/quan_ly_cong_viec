@@ -1,216 +1,135 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { verifyToken } from "@/lib/server-auth"
-import { updateTask, deleteTask, verifyTaskOwnership } from "@/lib/server-task-db"
+import { updateTask, deleteTask, verifyTaskOwnership, getTaskById } from "@/lib/server-task-db"
+import { executeQuery } from "@/lib/server-auth"
+
+async function handleAuthorization(request: NextRequest) {
+  const authHeader = request.headers.get("authorization")
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return { error: "Unauthorized", status: 401 }
+  }
+  const token = authHeader.substring(7)
+  const verification = verifyToken(token)
+  if (!verification.valid) {
+    return { error: "Invalid token", status: 401 }
+  }
+  return { userId: verification.payload.userId }
+}
 
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    console.log("PUT request received for task:", params.id)
-
-    // Verify authorization
-    const authHeader = request.headers.get("authorization")
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      console.error("Missing or invalid authorization header")
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const authResult = await handleAuthorization(request)
+    if ("error" in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status })
     }
-
-    const token = authHeader.substring(7)
-    const verification = verifyToken(token)
-
-    if (!verification.valid) {
-      console.error("Invalid token")
-      return NextResponse.json({ error: "Invalid token" }, { status: 401 })
-    }
-
-    const userId = verification.payload.userId
+    const { userId } = authResult
     const taskId = params.id
 
-    console.log("Authenticated user:", userId, "updating task:", taskId)
-
-    // Verify task ownership
     const ownsTask = await verifyTaskOwnership(userId, taskId)
     if (!ownsTask) {
-      console.error("Task not found or user doesn't own task")
       return NextResponse.json({ error: "Task not found or access denied" }, { status: 404 })
     }
 
-    // Parse request body
-    let updates
-    try {
-      updates = await request.json()
-      console.log("Received updates:", updates)
-    } catch (error) {
-      console.error("Error parsing request body:", error)
-      return NextResponse.json({ error: "Invalid request body" }, { status: 400 })
-    }
+    const { update_scope, ...updates } = await request.json()
 
-    // Validate and sanitize updates
-    const sanitizedUpdates: any = {}
-
-    if (updates.title !== undefined) {
-      if (typeof updates.title !== "string" || updates.title.trim().length === 0) {
-        return NextResponse.json({ error: "Title is required and must be a non-empty string" }, { status: 400 })
+    if (update_scope === "all_future") {
+      const currentTask = await getTaskById(taskId, userId);
+      if (!currentTask || !currentTask.recurring_series_id) {
+        return NextResponse.json({ error: "Task is not part of a recurring series." }, { status: 400 });
       }
-      sanitizedUpdates.title = updates.title.trim()
-    }
 
-    if (updates.description !== undefined) {
-      sanitizedUpdates.description = typeof updates.description === "string" ? updates.description.trim() : ""
-    }
+      // 1. Update the current task itself
+      await updateTask(userId, taskId, updates);
 
-    if (updates.category !== undefined) {
-      const validCategories = [
-        "server-renewal",
-        "electricity-bill",
-        "internet-bill",
-        "water-bill",
-        "rent",
-        "insurance",
-        "subscription",
-        "maintenance",
-        "other",
-      ]
-      if (!validCategories.includes(updates.category)) {
-        return NextResponse.json({ error: "Invalid category" }, { status: 400 })
-      }
-      sanitizedUpdates.category = updates.category
-    }
+      const { recurring_series_id, recurringCount } = currentTask;
+      const { dueDate, ...otherUpdates } = updates;
 
-    if (updates.dueDate !== undefined) {
-      try {
-        const dueDate = new Date(updates.dueDate)
-        if (isNaN(dueDate.getTime())) {
-          return NextResponse.json({ error: "Invalid due date" }, { status: 400 })
+      // 2. Update metadata for all future tasks in the series
+      if (Object.keys(otherUpdates).length > 0) {
+        const columnMapping: { [key: string]: string } = {
+          title: "title", description: "description", category: "category",
+          reminderTime: "reminder_time", isRecurring: "is_recurring",
+          recurringType: "recurring_type", recurringCycles: "recurring_cycles",
+        };
+        const updateFields = Object.keys(otherUpdates).filter(key => columnMapping[key]).map(key => `${columnMapping[key]} = ?`).join(", ");
+        const updateValues = Object.keys(otherUpdates).filter(key => columnMapping[key]).map(key => otherUpdates[key]);
+
+        if (updateFields.length > 0) {
+          const metadataQuery = `UPDATE tasks SET ${updateFields} WHERE recurring_series_id = ? AND recurring_count > ? AND user_id = ?`;
+          await executeQuery(metadataQuery, [...updateValues, recurring_series_id, recurringCount, userId]);
         }
-        sanitizedUpdates.dueDate = dueDate
-      } catch (error) {
-        return NextResponse.json({ error: "Invalid due date format" }, { status: 400 })
       }
-    }
 
-    if (updates.reminderTime !== undefined) {
-      const reminderTime = Number(updates.reminderTime)
-      if (isNaN(reminderTime) || reminderTime < 0) {
-        return NextResponse.json({ error: "Invalid reminder time" }, { status: 400 })
-      }
-      sanitizedUpdates.reminderTime = reminderTime
-    }
+      // 3. If dueDate was changed, calculate the delta and apply it to all future tasks
+      if (dueDate) {
+        const newDueDate = new Date(dueDate);
+        const oldDueDate = new Date(currentTask.due_date);
+        const delta = newDueDate.getTime() - oldDueDate.getTime();
 
-    if (updates.isRecurring !== undefined) {
-      sanitizedUpdates.isRecurring = Boolean(updates.isRecurring)
-    }
+        if (delta !== 0) {
+          const futureTasks = (await executeQuery(
+            "SELECT id, due_date FROM tasks WHERE recurring_series_id = ? AND recurring_count > ?",
+            [recurring_series_id, recurringCount]
+          )) as { id: number; due_date: Date }[];
 
-    if (updates.recurringType !== undefined) {
-      const validTypes = ["daily", "weekly", "monthly"]
-      if (updates.recurringType !== null && !validTypes.includes(updates.recurringType)) {
-        return NextResponse.json({ error: "Invalid recurring type" }, { status: 400 })
-      }
-      sanitizedUpdates.recurringType = updates.recurringType
-    }
-
-    if (updates.isCompleted !== undefined) {
-      sanitizedUpdates.isCompleted = Boolean(updates.isCompleted)
-
-      // Set completedAt based on isCompleted status
-      if (sanitizedUpdates.isCompleted && !updates.completedAt) {
-        sanitizedUpdates.completedAt = new Date()
-      } else if (!sanitizedUpdates.isCompleted) {
-        sanitizedUpdates.completedAt = null
-      }
-    }
-
-    if (updates.completedAt !== undefined && updates.completedAt !== null) {
-      try {
-        const completedAt = new Date(updates.completedAt)
-        if (isNaN(completedAt.getTime())) {
-          return NextResponse.json({ error: "Invalid completed date" }, { status: 400 })
+          for (const task of futureTasks) {
+            const futureDate = new Date(task.due_date);
+            const newFutureDate = new Date(futureDate.getTime() + delta);
+            const newDueDateStr = newFutureDate.toISOString().slice(0, 19).replace('T', ' ');
+            await executeQuery("UPDATE tasks SET due_date = ? WHERE id = ?", [newDueDateStr, task.id]);
+          }
         }
-        sanitizedUpdates.completedAt = completedAt
-      } catch (error) {
-        return NextResponse.json({ error: "Invalid completed date format" }, { status: 400 })
       }
-    }
-
-    console.log("Sanitized updates:", sanitizedUpdates)
-
-    // Perform the update
-    const success = await updateTask(userId, taskId, sanitizedUpdates)
-
-    if (success) {
-      console.log("Task updated successfully")
-      return NextResponse.json({
-        success: true,
-        message: "Task updated successfully",
-        taskId: taskId,
-      })
     } else {
-      console.error("Failed to update task in database")
-      return NextResponse.json({ error: "Failed to update task" }, { status: 500 })
+      // Single task update
+      const success = await updateTask(userId, taskId, updates);
+      if (!success) {
+        return NextResponse.json({ error: "Failed to update task" }, { status: 500 });
+      }
     }
+
+    return NextResponse.json({ success: true, message: "Task(s) updated successfully" })
   } catch (error) {
     console.error("Update task API error:", error)
-    console.error("Stack trace:", error.stack)
-    return NextResponse.json(
-      {
-        error: "Internal server error",
-        details: process.env.NODE_ENV === "development" ? error.message : undefined,
-      },
-      { status: 500 },
-    )
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
 
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    console.log("DELETE request received for task:", params.id)
-
-    const authHeader = request.headers.get("authorization")
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      console.error("Missing or invalid authorization header")
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const authResult = await handleAuthorization(request)
+    if ("error" in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status })
     }
-
-    const token = authHeader.substring(7)
-    const verification = verifyToken(token)
-
-    if (!verification.valid) {
-      console.error("Invalid token")
-      return NextResponse.json({ error: "Invalid token" }, { status: 401 })
-    }
-
-    const userId = verification.payload.userId
+    const { userId } = authResult
     const taskId = params.id
 
-    console.log("Authenticated user:", userId, "deleting task:", taskId)
+    const url = new URL(request.url)
+    const delete_scope = url.searchParams.get("delete_scope")
 
-    // Verify task ownership before deletion
-    const ownsTask = await verifyTaskOwnership(userId, taskId)
-    if (!ownsTask) {
-      console.error("Task not found or user doesn't own task")
+    const taskToDelete = await getTaskById(taskId, userId)
+    if (!taskToDelete) {
       return NextResponse.json({ error: "Task not found or access denied" }, { status: 404 })
     }
 
-    const success = await deleteTask(userId, taskId)
-
-    if (success) {
-      console.log("Task deleted successfully")
-      return NextResponse.json({
-        success: true,
-        message: "Task deleted successfully",
-        taskId: taskId,
-      })
+    if (delete_scope === "all_future" && taskToDelete.recurring_series_id) {
+      const { recurring_series_id, recurringCount } = taskToDelete;
+      if (typeof recurringCount !== 'number') {
+        return NextResponse.json({ error: "Invalid recurring task data." }, { status: 400 });
+      }
+      const query = "DELETE FROM tasks WHERE recurring_series_id = ? AND recurring_count >= ? AND user_id = ?";
+      const params = [recurring_series_id, recurringCount, userId];
+      await executeQuery(query, params);
     } else {
-      console.error("Failed to delete task from database")
-      return NextResponse.json({ error: "Failed to delete task" }, { status: 500 })
+      const success = await deleteTask(userId, taskId)
+      if (!success) {
+        return NextResponse.json({ error: "Failed to delete task" }, { status: 500 })
+      }
     }
+
+    return NextResponse.json({ success: true, message: "Task(s) deleted successfully" })
   } catch (error) {
     console.error("Delete task API error:", error)
-    console.error("Stack trace:", error.stack)
-    return NextResponse.json(
-      {
-        error: "Internal server error",
-        details: process.env.NODE_ENV === "development" ? error.message : undefined,
-      },
-      { status: 500 },
-    )
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

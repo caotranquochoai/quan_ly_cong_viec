@@ -44,7 +44,7 @@ export async function getUserTasks(userId: number): Promise<Task[]> {
 
     const tasks = (await executeQuery(
       `SELECT id, title, description, category, due_date, reminder_time,
-       is_recurring, recurring_type, is_completed, created_at, completed_at, recurring_count, recurring_cycles
+       is_recurring, recurring_type, is_completed, created_at, completed_at, recurring_count, recurring_cycles, recurring_series_id
        FROM tasks WHERE user_id = ? ORDER BY due_date ASC`,
       [userId],
     )) as any[]
@@ -63,6 +63,7 @@ export async function getUserTasks(userId: number): Promise<Task[]> {
       isCompleted: Boolean(task.is_completed),
       createdAt: new Date(task.created_at),
       completedAt: task.completed_at ? new Date(task.completed_at) : undefined,
+      recurring_series_id: task.recurring_series_id?.toString(),
     }))
   } catch (error) {
     console.error("Get tasks error:", error)
@@ -97,8 +98,8 @@ export async function createTask(userId: number, task: Omit<Task, "id" | "create
 
     const result = (await executeQuery(
       `INSERT INTO tasks (user_id, title, description, category, due_date, reminder_time,
-       is_recurring, recurring_type, is_completed, completed_at, recurring_count, recurring_cycles, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+       is_recurring, recurring_type, is_completed, completed_at, recurring_count, recurring_cycles, recurring_series_id, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
       [
         userId,
         task.title,
@@ -112,6 +113,7 @@ export async function createTask(userId: number, task: Omit<Task, "id" | "create
         completedAtString || null,
         task.recurringCount || 0,
         task.recurringCycles || 1,
+        task.recurring_series_id || null,
       ],
     )) as any
 
@@ -222,6 +224,12 @@ export async function updateTask(userId: number, taskId: string, updates: Partia
       console.log("Updating recurring_cycles to:", updates.recurringCycles)
     }
 
+    if (updates.recurring_series_id !== undefined) {
+      setClause.push("recurring_series_id = ?")
+      values.push(updates.recurring_series_id)
+      console.log("Updating recurring_series_id to:", updates.recurring_series_id)
+    }
+
     if (updates.timezone) {
       await executeQuery("UPDATE users SET timezone = ? WHERE id = ?", [updates.timezone, userId])
     }
@@ -283,5 +291,39 @@ export async function verifyTaskOwnership(userId: number, taskId: string): Promi
   } catch (error) {
     console.error("Error verifying task ownership:", error)
     return false
+  }
+}
+
+// Get a single task's details
+export async function getTaskById(taskId: string, userId: number): Promise<(Task & { recurring_series_id: string | null; due_date: Date }) | null> {
+  try {
+    const tasks = (await executeQuery(
+      "SELECT *, due_date as due_date_type FROM tasks WHERE id = ? AND user_id = ?",
+      [taskId, userId]
+    )) as any[];
+
+    if (tasks.length === 0) {
+      return null;
+    }
+    const task = tasks[0];
+    return {
+      id: task.id.toString(),
+      title: task.title,
+      description: task.description || "",
+      category: task.category,
+      dueDate: new Date(task.due_date),
+      reminderTime: task.reminder_time || 60,
+      isRecurring: Boolean(task.is_recurring),
+      recurringType: task.recurring_type || undefined,
+      isCompleted: Boolean(task.is_completed),
+      createdAt: new Date(task.created_at),
+      completedAt: task.completed_at ? new Date(task.completed_at) : undefined,
+      recurring_series_id: task.recurring_series_id ? task.recurring_series_id.toString() : null,
+      due_date: new Date(task.due_date_type),
+      recurringCount: task.recurring_count,
+    };
+  } catch (error) {
+    console.error("Get task by ID error:", error);
+    return null;
   }
 }

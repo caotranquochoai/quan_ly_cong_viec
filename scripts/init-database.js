@@ -52,7 +52,11 @@ async function initializeDatabase() {
         is_completed BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         completed_at TIMESTAMP NULL,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        recurring_count INT DEFAULT 0,
+        recurring_cycles INT DEFAULT 1,
+        recurring_series_id BIGINT NULL,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        INDEX idx_recurring_series_id (recurring_series_id)
       )
     `)
 

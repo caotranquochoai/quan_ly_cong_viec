@@ -1,1 +1,1 @@
-2025-07-03 19:07:26 | Cung cấp câu lệnh SQL để thêm cột recurring_count và recurring_cycles vào bảng tasks.
+2024-07-04T01:59:50.000Z | Đã sửa lỗi cập nhật/xóa công việc định kỳ bằng cách sử dụng `recurring_count` thay vì `due_date` để xác định các công việc trong tương lai.
